@@ -14,8 +14,8 @@ public class LayerDropFarmMacro extends AbstractMacro {
     private static final Logger LOGGER = LoggerFactory.getLogger("ReimoHelper");
     private static final Minecraft MC = Minecraft.getInstance();
 
-    // 5 drops then stop.
-    private static final int TARGET_DROPS = 5;
+    // formerly limited; now infinite
+    // private static final int TARGET_DROPS = 5;
     private static final double DESCENT_SPEED_THRESHOLD = 0.06;
     private static final double LAYER_DROP_THRESHOLD = 0.65;
     private static final int DIRECTION_SWITCH_COOLDOWN_MS = 450;
@@ -87,12 +87,8 @@ public class LayerDropFarmMacro extends AbstractMacro {
                     completedDrops++;
                     currentLayerY = y;
                     switchDirection(now, "Layer drop completed");
-                    LOGGER.info("Layer drop completed: {}/{} -> Direction: {}", completedDrops, TARGET_DROPS, movingLeft ? "LEFT" : "RIGHT");
-                    if (completedDrops >= TARGET_DROPS) {
-                        LOGGER.info("Layer pattern complete, stopping macro");
-                        macroHandler.disableMacro();
-                        return;
-                    }
+                    LOGGER.info("Layer drop completed: {} -> Direction: {}", completedDrops, movingLeft ? "LEFT" : "RIGHT");
+                    // no automatic stop; keep going forever
                 } else {
                     LOGGER.info("Landing detected without layer change (delta={}), resuming lane movement", String.format("%.3f", layerDelta));
                 }
