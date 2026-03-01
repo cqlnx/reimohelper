@@ -1,6 +1,7 @@
 package com.reimo.reimohelper.config;
 
 import java.io.*;
+import com.mojang.blaze3d.platform.InputConstants;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -18,8 +19,10 @@ public class ReimoHelperConfig {
     private static ReimoHelperConfig instance;
     
     // Main macro config
-    public String macroType = "LAYERDROP";
+    public MacroType macroType = MacroType.LAYERDROP;
     public boolean macroEnabled = false;
+    // key code used to toggle/start the macro; users can change this via the menu
+    public int macroToggleKey = InputConstants.KEY_GRAVE; // default to `~`
     public float customYaw = 0;
     public float customPitch = 0;
     public boolean useCustomRotation = false;
@@ -37,6 +40,8 @@ public class ReimoHelperConfig {
     public int inventoryPreviewY = 10;
     public int inventoryPreviewScale = 1;
     public int gameVolumePercent = 35;
+    public boolean failsafesEnabled = true;
+    public int failsafeSoundPercent = 70;
     public boolean autoEvacuateOnServerReboot = true;
     public boolean highlightPests = false;
     public boolean showStatusHud = true;
@@ -49,6 +54,15 @@ public class ReimoHelperConfig {
     public int statusHudScale = 1;
     public int hudLayoutRefWidth = 0;
     public int hudLayoutRefHeight = 0;
+
+    // user-customisable UI colours (hex ARGB)
+    public int uiAccentColor = 0xFF3DFF9A; // Primary Accent Green
+    public int uiPanelColor = 0xFF0E1612; // Primary Background (#0E1612)
+    public int uiCardColor = 0xFF111C17; // Secondary Background (#111C17)
+    public int uiBackgroundColor = 0xBB0E1612; // Overlay/backdrop (semi-opaque)
+    public int uiTextPrimaryColor = 0xFFE6FFF3; // Primary Text
+    public int uiTextSecondaryColor = 0xFF9FB5AB; // Muted Text
+    public int uiWarningColor = 0xFFFF4444;
     
     private ReimoHelperConfig() {
     }
@@ -66,8 +80,15 @@ public class ReimoHelperConfig {
             if (Files.exists(configPath)) {
                 String content = new String(Files.readAllBytes(configPath));
                 ReimoHelperConfig config = GSON.fromJson(content, ReimoHelperConfig.class);
-                if (config.macroType == null || !"LAYERDROP".equalsIgnoreCase(config.macroType)) {
-                    config.macroType = "LAYERDROP";
+                if (config.macroType == null) {
+                    config.macroType = MacroType.LAYERDROP;
+                }
+                // ensure toggle key has a reasonable value (1…255 typical)
+                if (config.macroToggleKey <= 0 || config.macroToggleKey > 1024) {
+                    config.macroToggleKey = InputConstants.KEY_GRAVE;
+                }
+                if (config.failsafeSoundPercent < 0 || config.failsafeSoundPercent > 100) {
+                    config.failsafeSoundPercent = 70;
                 }
                 LOGGER.info("Config loaded from {}", CONFIG_FILE);
                 return config;

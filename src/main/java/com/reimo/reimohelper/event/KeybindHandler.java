@@ -14,7 +14,7 @@ public class KeybindHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger("ReimoHelper");
     private static final Minecraft MC = Minecraft.getInstance();
 
-    private static boolean gravePressed = false;
+    private static boolean toggleKeyPressed = false;
     private static boolean rightShiftPressed = false;
     private static boolean f8Pressed = false;
     private static boolean acknowledgePressed = false;
@@ -29,11 +29,12 @@ public class KeybindHandler {
         acknowledgePressed = isAcknowledgeDown;
 
         if (MC.screen == null) {
-            boolean isGraveDown = InputConstants.isKeyDown(MC.getWindow(), InputConstants.KEY_GRAVE);
-            if (isGraveDown && !gravePressed) {
+            ReimoHelperConfig config = ReimoHelperConfig.getInstance();
+            boolean isToggleDown = InputConstants.isKeyDown(MC.getWindow(), config.macroToggleKey);
+            if (isToggleDown && !toggleKeyPressed) {
                 MacroHandler.getInstance().toggleMacro();
             }
-            gravePressed = isGraveDown;
+            toggleKeyPressed = isToggleDown;
 
             boolean isRightShiftDown = InputConstants.isKeyDown(MC.getWindow(), InputConstants.KEY_RSHIFT);
             if (isRightShiftDown && !rightShiftPressed) {
@@ -42,7 +43,7 @@ public class KeybindHandler {
             }
             rightShiftPressed = isRightShiftDown;
         } else {
-            gravePressed = false;
+            toggleKeyPressed = false;
             rightShiftPressed = false;
         }
 

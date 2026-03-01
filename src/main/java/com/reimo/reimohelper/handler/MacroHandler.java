@@ -2,6 +2,7 @@ package com.reimo.reimohelper.handler;
 
 import com.reimo.reimohelper.config.ReimoHelperConfig;
 import com.reimo.reimohelper.feature.DiscordWebhookService;
+import com.reimo.reimohelper.feature.MacroStatsStore;
 import com.reimo.reimohelper.feature.RewarpManager;
 import com.reimo.reimohelper.feature.UngrabMouse;
 import com.reimo.reimohelper.macro.AbstractMacro;
@@ -84,6 +85,8 @@ public class MacroHandler {
             UngrabMouse.getInstance().start();
             isMacroRunning = true;
             macroStartedAtMs = System.currentTimeMillis();
+            String playerName = MC.player != null ? MC.player.getName().getString() : MC.getUser().getName();
+            MacroStatsStore.getInstance().onMacroStart(playerName);
             config.macroEnabled = true;
             config.save();
             DiscordWebhookService.sendMacroStarted();
@@ -104,7 +107,8 @@ public class MacroHandler {
 
     private void createMacroFromConfig() {
         ReimoHelperConfig config = ReimoHelperConfig.getInstance();
-        config.macroType = "LAYERDROP";
+        // adjust to new enum type; default to LAYERDROP when creating
+        config.macroType = ReimoHelperConfig.MacroType.LAYERDROP;
         com.reimo.reimohelper.macro.AbstractMacro macro = new com.reimo.reimohelper.macro.impl.LayerDropFarmMacro();
         
         if (macro != null) {
@@ -123,6 +127,7 @@ public class MacroHandler {
             macroStartedAtMs = 0L;
             flightTapStartedAtMs = 0L;
             flightStabilizeUntilMs = 0L;
+            MacroStatsStore.getInstance().onMacroStop(runtimeSeconds);
             ReimoHelperConfig config = ReimoHelperConfig.getInstance();
             config.macroEnabled = false;
             config.save();

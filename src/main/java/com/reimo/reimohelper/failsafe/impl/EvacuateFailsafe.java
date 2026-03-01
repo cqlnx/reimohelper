@@ -174,7 +174,8 @@ public class EvacuateFailsafe {
         if (MC.player == null) return;
         float master = (float) MC.options.getSoundSourceVolume(net.minecraft.sounds.SoundSource.MASTER);
         float scaled = Math.max(1.0F, 1.0F / Math.max(0.1F, master));
-        MC.player.playSound(SoundEvents.ANVIL_LAND, scaled, 0.9F);
+        float failsafeMul = Math.max(0.0F, Math.min(1.0F, ReimoHelperConfig.getInstance().failsafeSoundPercent / 100.0F));
+        MC.player.playSound(SoundEvents.ANVIL_LAND, scaled * failsafeMul, 0.9F);
         lastSoundMs = System.currentTimeMillis();
     }
 
@@ -182,7 +183,8 @@ public class EvacuateFailsafe {
         if (MC.player == null) return;
         float master = (float) MC.options.getSoundSourceVolume(net.minecraft.sounds.SoundSource.MASTER);
         float scaled = Math.max(1.0F, 1.0F / Math.max(0.1F, master));
-        MC.player.playSound(SoundEvents.ANVIL_LAND, scaled, 1.3F);
+        float failsafeMul = Math.max(0.0F, Math.min(1.0F, ReimoHelperConfig.getInstance().failsafeSoundPercent / 100.0F));
+        MC.player.playSound(SoundEvents.ANVIL_LAND, scaled * failsafeMul, 1.3F);
         LOGGER.info("Evacuate ding sound played (once)");
     }
 

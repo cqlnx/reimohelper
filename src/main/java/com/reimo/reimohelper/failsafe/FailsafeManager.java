@@ -1,5 +1,6 @@
 package com.reimo.reimohelper.failsafe;
 
+import com.reimo.reimohelper.config.ReimoHelperConfig;
 import com.reimo.reimohelper.failsafe.impl.BedrockCageFailsafe;
 import com.reimo.reimohelper.failsafe.impl.DirtCheckFailsafe;
 import com.reimo.reimohelper.failsafe.impl.EvacuateFailsafe;
@@ -46,6 +47,12 @@ public class FailsafeManager {
         evacuateFailsafe.onClientTick();
 
         if (!MacroHandler.getInstance().isMacroActive()) {
+            resetState();
+            failsafeStopAtMs = 0L;
+            return;
+        }
+
+        if (!ReimoHelperConfig.getInstance().failsafesEnabled) {
             resetState();
             failsafeStopAtMs = 0L;
             return;
