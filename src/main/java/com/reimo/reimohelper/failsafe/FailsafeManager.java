@@ -91,6 +91,10 @@ public class FailsafeManager {
                 }
             });
         }
+        // If this is a rotation failsafe, lock the macro's look to the current rotation
+        if (trigger != null && trigger.startsWith("ROTATION")) {
+            com.reimo.reimohelper.feature.UngrabMouse.getInstance().lockToCurrentRotation();
+        }
         evacuateFailsafe.alertOnly(trigger);
         DiscordWebhookService.sendFailsafeTriggered(trigger);
     }
