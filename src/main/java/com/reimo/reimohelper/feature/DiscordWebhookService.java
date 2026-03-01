@@ -76,7 +76,17 @@ public final class DiscordWebhookService {
         embed.addProperty("description", description);
         embed.addProperty("color", color);
         embed.addProperty("timestamp", Instant.now().toString());
-        
+                
+        String avatarUrl = "https://mc-heads.net/avatar/" + playerName + "/100";
+        JsonObject thumbnail = new JsonObject();
+        thumbnail.addProperty("url", avatarUrl);
+        embed.add("thumbnail", thumbnail);
+
+        JsonObject author = new JsonObject();
+        author.addProperty("name", playerName);
+        author.addProperty("icon_url", avatarUrl);
+        embed.add("author", author);
+
         JsonObject footer = new JsonObject();
         footer.addProperty("text", "Player: " + playerName);
         embed.add("footer", footer);
@@ -145,6 +155,16 @@ public final class DiscordWebhookService {
         embed.addProperty("title", "ReimoHelper Status Update");
         embed.addProperty("color", 0x2EC4B6);
         embed.addProperty("timestamp", Instant.now().toString());
+        
+        String playerName = MC.getUser() != null ? MC.getUser().getName() : "Unknown";
+        String avatarUrl = "https://mc-heads.net/avatar/" + playerName + "/100";
+        JsonObject thumbnail = new JsonObject();
+        thumbnail.addProperty("url", avatarUrl);
+        embed.add("thumbnail", thumbnail);
+        JsonObject author = new JsonObject();
+        author.addProperty("name", playerName);
+        author.addProperty("icon_url", avatarUrl);
+        embed.add("author", author);
 
         JsonArray fields = new JsonArray();
         for (String line : lines) {
@@ -162,7 +182,7 @@ public final class DiscordWebhookService {
         }
         embed.add("fields", fields);
 
-        String playerName = MC.getUser() != null ? MC.getUser().getName() : "Unknown";
+        // footer (reuse playerName defined above)
         embed.addProperty("footer", "");
         JsonObject footer = new JsonObject();
         footer.addProperty("text", "Player: " + playerName + " | BPS: " + String.format("%.2f", BpsTracker.getBps()));

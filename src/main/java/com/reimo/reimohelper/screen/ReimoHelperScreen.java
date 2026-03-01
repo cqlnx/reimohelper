@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class ReimoHelperScreen extends Screen {
@@ -54,6 +55,7 @@ public class ReimoHelperScreen extends Screen {
     private String webhookUrlInput = "";
     private boolean editingWebhookUrl = false;
     private Button pasteBtn;
+    private String lastClipboardBackend = "";
     private Button tabGeneralButton;
     private Button tabHudButton;
     private Button tabFailsafeButton;
@@ -209,7 +211,7 @@ public class ReimoHelperScreen extends Screen {
                     LOGGER.info("Paste button action clipboard={}", clipboard);
                     if (clipboard != null && !clipboard.isEmpty()) {
                         webhookUrlInput = clipboard.trim();
-                        status = "Pasted webhook URL";
+                        status = "Pasted webhook URL (" + (lastClipboardBackend == null || lastClipboardBackend.isEmpty() ? "unknown" : lastClipboardBackend) + ")";
                         statusColor = 0xFF9FE19F;
                         webhookUrlButton.setMessage(Component.literal("Webhook URL: " + (webhookUrlInput.isEmpty() ? "(empty)" : "***")));
                     } else {
@@ -440,6 +442,8 @@ public class ReimoHelperScreen extends Screen {
                 String clipboard = getClipboardAsString();
                 if (clipboard != null && !clipboard.isEmpty()) {
                     webhookUrlInput = clipboard.trim();
+                    status = "Pasted webhook URL (" + (lastClipboardBackend == null || lastClipboardBackend.isEmpty() ? "unknown" : lastClipboardBackend) + ")";
+                    statusColor = 0xFF9FE19F;
                 }
                 return true;
             }
@@ -472,6 +476,7 @@ public class ReimoHelperScreen extends Screen {
                 Object data = clipboard.getData(flavor);
                 if (data instanceof String) {
                     LOGGER.info("Clipboard read via AWT");
+                    lastClipboardBackend = "awt";
                     return (String) data;
                 }
             }
@@ -479,16 +484,34 @@ public class ReimoHelperScreen extends Screen {
             LOGGER.info("AWT clipboard read failed: {}", ignored.toString());
         }
 
-        // On Linux, try wl-paste or xclip as a fallback (Wayland/X11)
+        // On Linux, try wl-paste, xclip, xsel as fallbacks (Wayland/X11)
         try {
             String os = System.getProperty("os.name").toLowerCase();
             if (os.contains("linux")) {
-                String out = tryCommand(new String[]{"wl-paste", "-n"});
-                if (out != null && !out.isEmpty()) return out;
-                out = tryCommand(new String[]{"xclip", "-o", "-selection", "clipboard"});
-                if (out != null && !out.isEmpty()) return out;
+                String session = System.getenv("XDG_SESSION_TYPE");
+                String waylandDisplay = System.getenv("WAYLAND_DISPLAY");
+                // If we're on Wayland and have a WAYLAND_DISPLAY, prefer wl-paste
+                if (session != null && session.equalsIgnoreCase("wayland") && waylandDisplay != null && !waylandDisplay.isEmpty()) {
+                    String out = tryCommand(new String[]{"wl-paste", "-n"});
+                    if (out != null && !out.isEmpty()) {
+                        lastClipboardBackend = "wl-paste";
+                        return out;
+                    }
+                }
+
+                // Otherwise prefer X11 helpers (xclip, xsel) on X11 or when Wayland isn't available
+                String out = tryCommand(new String[]{"xclip", "-o", "-selection", "clipboard"});
+                if (out != null && !out.isEmpty()) { lastClipboardBackend = "xclip"; return out; }
+                out = tryCommand(new String[]{"xclip", "-o", "-selection", "primary"});
+                if (out != null && !out.isEmpty()) { lastClipboardBackend = "xclip-primary"; return out; }
+
+                out = tryCommand(new String[]{"xsel", "-b", "-o"});
+                if (out != null && !out.isEmpty()) { lastClipboardBackend = "xsel"; return out; }
+                out = tryCommand(new String[]{"xsel", "-p", "-o"});
+                if (out != null && !out.isEmpty()) { lastClipboardBackend = "xsel-primary"; return out; }
             }
         } catch (Exception ignored) {
+            LOGGER.info("Clipboard fallback check failed: {}", ignored.toString());
         }
 
         return null;
@@ -515,6 +538,7 @@ public class ReimoHelperScreen extends Screen {
                 return null;
             }
         } catch (Throwable t) {
+            LOGGER.info("Clipboard command {} failed: {}", Arrays.toString(cmd), t.toString());
             return null;
         }
     }
@@ -633,16 +657,20 @@ public class ReimoHelperScreen extends Screen {
         int t = (height - panelH) / 2;
         int b = t + panelH;
 
-        gg.fill(l + 2, t + 2, r + 2, b + 2, 0x66000000);
-        gg.fill(l, t, r, b, 0xD8121821);
-        gg.fill(l + 1, t + 1, r - 1, t + 28, 0xA01E2A38);
-        gg.fill(l, t, r, t + 2, 0xFF2EC4B6);
-        gg.fill(l, b - 2, r, b, 0xFF2EC4B6);
+        // base panel and shadow
+        gg.fill(l + 2, t + 2, r + 2, b + 2, 0x55000000);
+        gg.fill(l, t, r, b, 0xFF20232A);  // dark grey background
+        // header bar with accent color
+        gg.fill(l, t, r, t + 28, 0xFF2EC4B6);
+        // top/bottom border lines
+        gg.fill(l, t, r, t + 2, 0xFF1B252D);
+        gg.fill(l, b - 2, r, b, 0xFF1B252D);
 
+        // small horizontal separators
         gg.fill(l + 16, t + 53, r - 16, t + 54, 0x553F5368);
         gg.fill(l + 16, b - 78, r - 16, b - 77, 0x553F5368);
 
-        gg.drawCenteredString(font, "ReimoHelper", cx, t + 10, 0xFFFFFFFF);
+        gg.drawCenteredString(font, "ReimoHelper", cx, t + 10, 0xFF20232A);
         gg.drawCenteredString(font, "Menu: Right Shift | Toggle: ~", cx, t + 20, 0xFFB7C6D8);
 
         if (activeTab == MenuTab.FAILSAFE && !hudEditMode) {
@@ -657,6 +685,19 @@ public class ReimoHelperScreen extends Screen {
             drawWebhookUrlInput(gg, cx, 0);
         }
 
+        // highlight active tab with a thin accent border
+        Button activeBtn = switch(activeTab) {
+            case GENERAL -> tabGeneralButton;
+            case HUD -> tabHudButton;
+            case FAILSAFE -> tabFailsafeButton;
+        };
+        if (activeBtn != null) {
+            int ax = activeBtn.getX();
+            int ay = activeBtn.getY();
+            int aw = activeBtn.getWidth();
+            int ah = activeBtn.getHeight();
+            gg.fill(ax - 2, ay - 2, ax + aw + 2, ay + ah + 2, 0xFF2EC4B6);
+        }
         super.render(gg, mx, my, pt);
 
         String rewarp = RewarpManager.getInstance().isRewarpSet() ? "Rewarp: Set" : "Rewarp: Not Set";
@@ -697,6 +738,12 @@ public class ReimoHelperScreen extends Screen {
     private void drawWebhookUrlInput(GuiGraphics gg, int cx, int y) {
         int w = 300;
         int h = 100;
+        String displayUrl = webhookUrlInput.isEmpty() ? "paste your webhook URL here" : webhookUrlInput;
+        if (editingWebhookUrl) {
+            // make the whole dialog wider to accommodate the URL text, up to screen size
+            int needed = font.width(displayUrl) + 120; // include padding and space for paste button
+            w = Math.min(width - 20, Math.max(w, needed));
+        }
         int x = width - w - 12; // Top-right corner
         int y2 = 12; // Position near top
 
@@ -717,21 +764,24 @@ public class ReimoHelperScreen extends Screen {
         gg.fill(x + 8, boxY + boxH - 1, x + 8 + inputW, boxY + boxH, 0xFF5CA8FF);
         
         // Display the URL or placeholder
-        String displayUrl = webhookUrlInput.isEmpty() ? "paste your webhook URL here" : webhookUrlInput;
-        String truncatedUrl;
-        if (displayUrl.length() > 35) {
-            truncatedUrl = displayUrl.substring(0, 32) + "...";
-        } else {
-            truncatedUrl = displayUrl;
-        }
         int textColor = webhookUrlInput.isEmpty() ? 0xFF888888 : 0xFFFFFFFF;
-        gg.drawString(font, truncatedUrl, x + 12, boxY + 7, textColor, false);
-        
-        // Draw blinking cursor if editing
-        if ((System.currentTimeMillis() / 500) % 2 == 0) {
-            int cursorX = x + 12 + font.width(truncatedUrl);
+
+        // draw text; when editing we expanded the dialog so text should fit entirely
+        gg.drawString(font, displayUrl, x + 12, boxY + 7, textColor, false);
+        if (editingWebhookUrl && (System.currentTimeMillis() / 500) % 2 == 0) {
+            int cursorX = x + 12 + font.width(displayUrl);
             if (cursorX < x + 8 + inputW - 12) {
                 gg.fill(cursorX, boxY + 5, cursorX + 1, boxY + boxH - 5, 0xFFFFFFFF);
+            }
+        }
+
+        // when not editing we still show a truncated tail if URL too long to fit
+        if (!editingWebhookUrl) {
+            String truncatedUrl;
+            int maxVisible = 60;
+            if (displayUrl.length() > maxVisible) {
+                truncatedUrl = "..." + displayUrl.substring(displayUrl.length() - (maxVisible - 3));
+                gg.drawString(font, truncatedUrl, x + 12, boxY + 7, textColor, false);
             }
         }
 
