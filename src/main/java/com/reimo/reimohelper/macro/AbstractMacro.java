@@ -15,10 +15,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
 
-/**
- * Abstract base class for macros in ReimoHelper
- * Handles core macro state management, rotation, and farming logic
- */
+// base class for all macros, contains shared state and helper clocks
 @SuppressWarnings("ALL")
 public abstract class AbstractMacro {
     public static final Minecraft MC = Minecraft.getInstance();
@@ -79,23 +76,17 @@ public abstract class AbstractMacro {
         this.currentState = State.NONE;
     }
 
-    /**
-     * Check if macro is enabled and no feature is pausing it
-     */
+        // true when macro running (no pause conditions)
     public boolean isEnabledAndNoFeature() {
         return enabled;
     }
 
-    /**
-     * Check if macro is paused
-     */
+        // opposite of enabled
     public boolean isPaused() {
         return !enabled;
     }
 
-    /**
-     * Rotation getter/setter methods
-     */
+        // yaw/pitch helpers
     public boolean isYawSet() {
         return yaw.isPresent();
     }
@@ -120,10 +111,7 @@ public abstract class AbstractMacro {
         this.pitch = Optional.of(pitch);
     }
 
-    /**
-     * Main tick method - called every game tick
-     * Override for custom tick behavior
-     */
+        // tick handler called each game tick; subclasses extend
     public void onTick() {
         if (!enabled) return;
 
@@ -252,9 +240,7 @@ public abstract class AbstractMacro {
         return false;
     }
 
-    /**
-     * Called when macro is enabled
-     */
+    // initialization when macro turns on
     public void onEnable() {
         if (MC.player == null) return;
 
@@ -283,9 +269,7 @@ public abstract class AbstractMacro {
         LogUtils.sendInfo("Macro enabled");
     }
 
-    /**
-     * Called when macro is disabled
-     */
+    // cleanup when macro stops
     public void onDisable() {
         changeState(State.NONE);
         setRewarpState(RewarpState.NONE);
@@ -306,9 +290,7 @@ public abstract class AbstractMacro {
         LogUtils.sendInfo("Macro disabled");
     }
 
-    /**
-     * Save macro state
-     */
+    // store current state for later
     public void saveState() {
         if (savedState.isEmpty()) {
             LogUtils.sendInfo("Saving macro state: " + currentState);
@@ -321,9 +303,7 @@ public abstract class AbstractMacro {
         }
     }
 
-    /**
-     * Change macro state
-     */
+    // update the finite-state machine state
     public void changeState(State state) {
         if (currentState != state) {
             LogUtils.sendDebug("Changing state from " + currentState + " to " + state);
@@ -332,18 +312,14 @@ public abstract class AbstractMacro {
         }
     }
 
-    /**
-     * Abstract methods to be implemented by subclasses
-     */
+    // subclass hooks
     public abstract void updateState();
 
     public abstract void invokeState();
 
     public abstract void actionAfterTeleport();
 
-    /**
-     * Check movement direction based on surrounding blocks
-     */
+    // figure out which way to walk
     public State calculateDirection() {
         if (MC.level == null || MC.player == null) {
             return State.NONE;
@@ -362,9 +338,7 @@ public abstract class AbstractMacro {
         return State.FORWARD;
     }
 
-    /**
-     * Helper method to check if block is air
-     */
+    // true if the block at offset is air
     private boolean isBlockAir(int dx, int dy, int dz) {
         if (MC.player == null || MC.level == null) return false;
         int x = (int) MC.player.getX() + dx;
@@ -373,9 +347,7 @@ public abstract class AbstractMacro {
         return MC.level.getBlockState(new net.minecraft.core.BlockPos(x, y, z)).isAir();
     }
 
-    /**
-     * Rotate player yaw after rewarp
-     */
+    // adjust yaw 180° post-rewarp
     public void doAfterRewarpRotation() {
         float newYaw = getYaw() + 180f;
         if (newYaw > 360) newYaw -= 360;
@@ -383,9 +355,7 @@ public abstract class AbstractMacro {
         setClosest90Deg(Optional.of(getClosest90Rotation(newYaw)));
     }
 
-    /**
-     * Get closest 90-degree rotation
-     */
+    // round yaw to nearest cardinal direction
     private float getClosest90Rotation(float yaw) {
         float normalized = yaw % 360;
         if (normalized < 0) normalized += 360;
@@ -405,9 +375,7 @@ public abstract class AbstractMacro {
         return closest;
     }
 
-    /**
-     * Set walking direction based on block positions
-     */
+    // default walking axis and log it
     protected void setWalkingDirection() {
         if (MC.player == null || MC.level == null) return;
 
@@ -421,23 +389,17 @@ public abstract class AbstractMacro {
         LOGGER.debug("Walking direction: {}", getWalkingDirection());
     }
 
-    /**
-     * Check if rotation after warp is needed
-     */
+    // can be overridden, usually true
     public boolean shouldRotateAfterWarp() {
         return true;
     }
 
-    /**
-     * Set break time for macro
-     */
+    // placeholder for break scheduling
     public void setBreakTime(double time, double timeBefore) {
         // Timer logic to be implemented with scheduler
     }
 
-    /**
-     * Macro state enum
-     */
+    // possible macro FSM states
     public enum State {
         NONE,
         DROPPING,
@@ -453,9 +415,7 @@ public abstract class AbstractMacro {
         W
     }
 
-    /**
-     * Rewarp state enum
-     */
+    // progression of a rewarp
     public enum RewarpState {
         NONE,
         TELEPORTING,
@@ -463,17 +423,13 @@ public abstract class AbstractMacro {
         POST_REWARP
     }
 
-    /**
-     * Walking direction enum
-     */
+    // axis we are moving along
     public enum WalkingDirection {
         X,
         Z
     }
 
-    /**
-     * Saved state for macro persistence
-     */
+    // used to remember state across disables
     public static class SavedState {
         private State state;
         private float yaw;

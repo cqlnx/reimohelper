@@ -4,9 +4,7 @@ import com.reimo.reimohelper.util.helper.Rotation;
 import com.reimo.reimohelper.util.helper.RotationConfiguration;
 import net.minecraft.client.Minecraft;
 
-/**
- * Handles player rotation with easing
- */
+// basic rotation easer for macros
 public class RotationHandler {
     private static RotationHandler instance;
     private static final Minecraft MC = Minecraft.getInstance();
@@ -28,18 +26,14 @@ public class RotationHandler {
         return instance;
     }
 
-    /**
-     * Ease to a target rotation
-     */
+        // start easing towards given rotation
     public void easeTo(RotationConfiguration config) {
         this.currentRotation = config;
         this.startTime = System.currentTimeMillis();
         this.isRotating = true;
     }
 
-    /**
-     * Update rotation each tick
-     */
+        // called every tick to apply easing step
     public void onTick() {
         if (!isRotating || currentRotation == null || MC.player == null) {
             return;
@@ -75,9 +69,7 @@ public class RotationHandler {
         MC.player.setXRot(newPitch);
     }
 
-    /**
-     * Get needed rotation change between two rotations
-     */
+        // compute yaw/pitch diff between two angles
     public Rotation getNeededChange(Rotation target, Rotation current) {
         float yawDiff = target.getYaw() - current.getYaw();
         float pitchDiff = target.getPitch() - current.getPitch();
@@ -89,9 +81,7 @@ public class RotationHandler {
         return new Rotation(yawDiff, pitchDiff);
     }
 
-    /**
-     * Reset rotation handler
-     */
+        // stop any ongoing rotation
     public void reset() {
         isRotating = false;
         currentRotation = null;

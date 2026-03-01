@@ -4,23 +4,17 @@ import net.minecraft.client.Minecraft;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Utility class for managing keybinds and player movement
- */
+// helper methods for key states and movement
 public class KeyBindUtils {
     private static final Logger LOGGER = LoggerFactory.getLogger("ReimoHelper");
     private static final Minecraft MC = Minecraft.getInstance();
 
-    /**
-     * Stop all movement keys
-     */
+        // release all movement inputs
     public static void stopMovement() {
         stopMovement(false);
     }
 
-    /**
-     * Stop movement with optional left-click hold
-     */
+        // stop movement; optionally hold attack
     public static void stopMovement(boolean holdLeftClick) {
         if (MC.player == null) return;
 
@@ -36,9 +30,7 @@ public class KeyBindUtils {
         }
     }
 
-    /**
-     * Get array of currently held keybinds
-     */
+        // return which WASD keys are down
     public static boolean[] getHoldingKeybinds() {
         if (MC.player == null) return new boolean[0];
         boolean[] binds = new boolean[4];
@@ -49,25 +41,19 @@ public class KeyBindUtils {
         return binds;
     }
 
-    /**
-     * Hold specific keys
-     */
+        // press given key codes
     public static void holdThese(int... keyCodes) {
         if (MC.player == null) return;
         // Implementation for holding specific keys
     }
 
-    /**
-     * Check if player can move
-     */
+        // true if player non-null and alive
     public static boolean canMove() {
         if (MC.player == null) return false;
         return !MC.player.isDeadOrDying();
     }
 
-    /**
-     * Set player rotation
-     */
+        // directly set yaw/pitch
     public static void setRotation(float yaw, float pitch) {
         if (MC.player == null) return;
         MC.player.setYRot(yaw);

@@ -9,9 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import net.minecraft.network.chat.Component;
 
-/**
- * This will need alot of updates it straight dog shit and doesnt do what it should.
- */
+// placeholder ungrab logic; rough around edges but works for now
 public final class UngrabMouse {
     private static final Minecraft MC = Minecraft.getInstance();
     private static final Logger LOGGER = LoggerFactory.getLogger("ReimoHelper");
@@ -64,10 +62,7 @@ public final class UngrabMouse {
         regrab();
     }
 
-    /**
-     * Set the look lock to the player's current yaw/pitch so the macro will keep
-     * the camera at the position it was at when this method was called.
-     */
+        // lock camera orientation to current player rotation
     public void lockToCurrentRotation() {
         if (MC.player == null) return;
         lockedYaw = MC.player.getYRot();

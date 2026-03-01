@@ -1,8 +1,5 @@
 package com.reimo.reimohelper.util.helper;
 
-/**
- * Configuration for rotation easing and timing
- */
 public class RotationConfiguration {
     private Rotation targetRotation;
     private long duration;
@@ -25,26 +22,17 @@ public class RotationConfiguration {
     public boolean isUseEaseOutBack() { return useEaseOutBack; }
     public void setUseEaseOutBack(boolean use) { this.useEaseOutBack = use; }
 
-    /**
-     * Set to use ease-out-back easing function
-     */
     public RotationConfiguration easeOutBack(boolean enabled) {
         this.useEaseOutBack = enabled;
         return this;
     }
 
-    /**
-     * Calculate eased rotation progress (0.0 to 1.0)
-     */
     public double getProgress(long elapsedTime) {
         if (duration <= 0) return 1.0;
         double progress = (double) elapsedTime / duration;
         return Math.min(1.0, progress);
     }
 
-    /**
-     * Apply ease-out-back function to progress
-     */
     public double applyEaseOutBack(double progress) {
         if (!useEaseOutBack) return progress;
 

@@ -12,6 +12,7 @@ import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.client.Minecraft;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +40,39 @@ public class ReimoHelperScreen extends Screen {
     private final List<AbstractWidget> generalButtons = new ArrayList<>();
     private final List<AbstractWidget> hudButtons = new ArrayList<>();
     private final List<AbstractWidget> failsafeButtons = new ArrayList<>();
+
+    // simple custom button implementation to give us flat backgrounds and hover
+    // highlights without fighting Minecraft's built-in texture.  We deliberately
+    // subclass Button so that we can still call setMessage() and use the
+    // existing listeners, but override the rendering logic in renderContents.
+    private static class StyledButton extends Button {
+        public StyledButton(int x, int y, int w, int h, Component msg, OnPress onPress) {
+            // the third parameter in this constructor is a narration supplier; just
+            // provide a no-op so we can keep the other signature simple.
+            super(x, y, w, h, msg, onPress, (button) -> Component.empty());
+        }
+
+        @Override
+        protected void renderContents(GuiGraphics gg, int mouseX, int mouseY, float partialTicks) {
+            // draw flat background
+            int col = this.isMouseOver(mouseX, mouseY) ? 0xFF3A3C40 : 0xFF2E3036;
+            gg.fill(this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight(), col);
+            // thin accent lines top/bottom
+            gg.fill(this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + 1, 0xFF2EC4B6);
+            gg.fill(this.getX(), this.getY() + this.getHeight() - 1,
+                    this.getX() + this.getWidth(), this.getY() + this.getHeight(), 0xFF2EC4B6);
+            // draw label centred vertically
+            gg.drawCenteredString(Minecraft.getInstance().font, this.getMessage().getString(),
+                    this.getX() + this.getWidth() / 2,
+                    this.getY() + (this.getHeight() - 8) / 2,
+                    0xFFFFFFFF);
+        }
+    }
+
+    private StyledButton createButton(int x, int y, int w, int h, Component text, Button.OnPress onPress) {
+        return new StyledButton(x, y, w, h, text, onPress);
+    }
+
 
     private Button macroButton;
     private Button ungrabButton;
@@ -74,6 +108,8 @@ public class ReimoHelperScreen extends Screen {
         super(Component.literal("ReimoHelper"));
     }
 
+
+
     @Override
     protected void init() {
         clearWidgets();
@@ -91,29 +127,29 @@ public class ReimoHelperScreen extends Screen {
 
         int tabY = panelTop + 32;
         int tabW = 84;
-        tabGeneralButton = addRenderableWidget(Button.builder(Component.literal("General"), b -> setTab(MenuTab.GENERAL))
-                .pos(cx - tabW - 44, tabY).size(tabW, 18).build());
-        tabHudButton = addRenderableWidget(Button.builder(Component.literal("HUD"), b -> setTab(MenuTab.HUD))
-                .pos(cx - tabW / 2, tabY).size(tabW, 18).build());
-        tabFailsafeButton = addRenderableWidget(Button.builder(Component.literal("Failsafe"), b -> setTab(MenuTab.FAILSAFE))
-                .pos(cx + 44, tabY).size(tabW, 18).build());
+        tabGeneralButton = addRenderableWidget(createButton(cx - tabW - 44, tabY, tabW, 18,
+                Component.literal("General"), b -> setTab(MenuTab.GENERAL)));
+        tabHudButton = addRenderableWidget(createButton(cx - tabW / 2, tabY, tabW, 18,
+                Component.literal("HUD"), b -> setTab(MenuTab.HUD)));
+        tabFailsafeButton = addRenderableWidget(createButton(cx + 44, tabY, tabW, 18,
+                Component.literal("Failsafe"), b -> setTab(MenuTab.FAILSAFE)));
 
         int contentY = panelTop + 60;
 
-        macroButton = addGeneralButton(Button.builder(
+        macroButton = addGeneralButton(createButton(
+                cx - bw / 2, contentY, bw, BUTTON_H,
                 Component.literal(config.macroEnabled ? "Stop Macro (~)" : "Start Macro (~)"),
-                b -> onToggleMacro()
-        ).pos(cx - bw / 2, contentY).size(bw, BUTTON_H).build());
+                b -> onToggleMacro()));
 
-        addGeneralButton(Button.builder(
+        addGeneralButton(createButton(
+                cx - bw / 2, contentY + step, bw, BUTTON_H,
                 Component.literal("Set Rewarp Position"),
-                b -> onSetRewarp()
-        ).pos(cx - bw / 2, contentY + step).size(bw, BUTTON_H).build());
+                b -> onSetRewarp()));
 
-        ungrabButton = addGeneralButton(Button.builder(
+        ungrabButton = addGeneralButton(createButton(
+                cx - bw / 2, contentY + step * 2, bw, BUTTON_H,
                 Component.literal("Auto Ungrab: " + onOff(config.autoUngrabMouse) + " [DEV]"),
-                b -> onToggleUngrab()
-        ).pos(cx - bw / 2, contentY + step * 2).size(bw, BUTTON_H).build());
+                b -> onToggleUngrab()));
 
         soundSlider = addGeneralButton(new AbstractSliderButton(
                 cx - bw / 2,
@@ -136,40 +172,40 @@ public class ReimoHelperScreen extends Screen {
             }
         });
 
-        previewButton = addHudButton(Button.builder(
+        previewButton = addHudButton(createButton(
+                cx - bw / 2, contentY, bw, BUTTON_H,
                 Component.literal("Inventory Preview: " + onOff(config.inventoryPreviewEnabled)),
-                b -> onTogglePreview()
-        ).pos(cx - bw / 2, contentY).size(bw, BUTTON_H).build());
+                b -> onTogglePreview()));
 
-        pestHighlightButton = addHudButton(Button.builder(
+        pestHighlightButton = addHudButton(createButton(
+                cx - bw / 2, contentY + step, bw, BUTTON_H,
                 Component.literal("Highlight Pests: " + onOff(config.highlightPests)),
-                b -> onTogglePestHighlight()
-        ).pos(cx - bw / 2, contentY + step).size(bw, BUTTON_H).build());
+                b -> onTogglePestHighlight()));
 
-        statusHudButton = addHudButton(Button.builder(
+        statusHudButton = addHudButton(createButton(
+                cx - bw / 2, contentY + step * 2, bw, BUTTON_H,
                 Component.literal("Status HUD: " + onOff(config.showStatusHud)),
-                b -> onToggleStatusHud()
-        ).pos(cx - bw / 2, contentY + step * 2).size(bw, BUTTON_H).build());
+                b -> onToggleStatusHud()));
 
-        debugHudButton = addHudButton(Button.builder(
+        debugHudButton = addHudButton(createButton(
+                cx - bw / 2, contentY + step * 3, bw, BUTTON_H,
                 Component.literal("Debug HUD: " + onOff(config.showDebugHud)),
-                b -> onToggleDebugHud()
-        ).pos(cx - bw / 2, contentY + step * 3).size(bw, BUTTON_H).build());
+                b -> onToggleDebugHud()));
 
-        hudEditButton = addHudButton(Button.builder(
+        hudEditButton = addHudButton(createButton(
+                cx - bw / 2, contentY + step * 4 + 2, bw, BUTTON_H,
                 Component.literal("Edit HUD Layout"),
-                b -> toggleHudEditMode()
-        ).pos(cx - bw / 2, contentY + step * 4 + 2).size(bw, BUTTON_H).build());
+                b -> toggleHudEditMode()));
 
-        evacuateRebootButton = addFailsafeButton(Button.builder(
+        evacuateRebootButton = addFailsafeButton(createButton(
+                cx - bw / 2, contentY, bw, BUTTON_H,
                 Component.literal("Evacuate Reboot: " + onOff(config.autoEvacuateOnServerReboot)),
-                b -> onToggleEvacuateReboot()
-        ).pos(cx - bw / 2, contentY).size(bw, BUTTON_H).build());
+                b -> onToggleEvacuateReboot()));
 
-        webhookButton = addFailsafeButton(Button.builder(
+        webhookButton = addFailsafeButton(createButton(
+                cx - bw / 2, contentY + step, bw, BUTTON_H,
                 Component.literal("Discord Webhook: " + onOff(config.discordWebhookEnabled)),
-                b -> onToggleWebhook()
-        ).pos(cx - bw / 2, contentY + step).size(bw, BUTTON_H).build());
+                b -> onToggleWebhook()));
 
         webhookIntervalSlider = addFailsafeButton(new AbstractSliderButton(
                 cx - bw / 2,
@@ -194,17 +230,18 @@ public class ReimoHelperScreen extends Screen {
             }
         });
 
-        webhookUrlButton = addFailsafeButton(Button.builder(
+        webhookUrlButton = addFailsafeButton(createButton(
+                cx - bw / 2, contentY + step * 3 + 2, bw, BUTTON_H,
                 Component.literal("Webhook URL: " + (config.discordWebhookUrl.isEmpty() ? "(empty)" : "***")),
-                b -> onEditWebhookUrl()
-        ).pos(cx - bw / 2, contentY + step * 3 + 2).size(bw, BUTTON_H).build());
+                b -> onEditWebhookUrl()));
 
         // create paste button (hidden by default) so it looks exactly like other buttons
         int pasteW = 75;
         int pasteH = 20;
         int pasteX = width - pasteW - 20; // aligns with drawWebhookUrlInput
         int pasteY = 12 + 32; // y2 + 32
-        pasteBtn = addRenderableWidget(Button.builder(
+        pasteBtn = addRenderableWidget(createButton(
+                pasteX, pasteY, pasteW, pasteH,
                 Component.literal("Paste"),
                 b -> {
                     String clipboard = getClipboardAsString();
@@ -219,14 +256,14 @@ public class ReimoHelperScreen extends Screen {
                         statusColor = 0xFFFFAA66;
                     }
                 }
-        ).pos(pasteX, pasteY).size(pasteW, pasteH).build());
+        ));
         pasteBtn.visible = false;
         pasteBtn.active = false;
 
-        closeButton = addRenderableWidget(Button.builder(
+        closeButton = addRenderableWidget(createButton(
+                cx - bw / 2, panelBottom - 28, bw, BUTTON_H,
                 Component.literal("Close"),
-                b -> onClose()
-        ).pos(cx - bw / 2, panelBottom - 28).size(bw, BUTTON_H).build());
+                b -> onClose()));
 
         applyTabVisibility();
         updateTabLabels();
@@ -614,6 +651,8 @@ public class ReimoHelperScreen extends Screen {
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
+    // helper used during early iterations; no longer needed (hover handled in StyledButton)
+
     private boolean insideInventory(double mx, double my) {
         int x = config.inventoryPreviewX - 3;
         int y = config.inventoryPreviewY - 3;
@@ -685,7 +724,12 @@ public class ReimoHelperScreen extends Screen {
             drawWebhookUrlInput(gg, cx, 0);
         }
 
-        // highlight active tab with a thin accent border
+        // note: we render the active-tab border *after* drawing widgets below so
+        // it remains visible on top of our custom button backgrounds.
+        super.render(gg, mx, my, pt);
+
+        // highlight active tab with a thin accent outline (no fill) so the
+        // button label is never obscured.
         Button activeBtn = switch(activeTab) {
             case GENERAL -> tabGeneralButton;
             case HUD -> tabHudButton;
@@ -696,9 +740,17 @@ public class ReimoHelperScreen extends Screen {
             int ay = activeBtn.getY();
             int aw = activeBtn.getWidth();
             int ah = activeBtn.getHeight();
-            gg.fill(ax - 2, ay - 2, ax + aw + 2, ay + ah + 2, 0xFF2EC4B6);
+            int col = 0xFF2EC4B6;
+            // top edge
+            gg.fill(ax - 2, ay - 2, ax + aw + 2, ay - 1, col);
+            // bottom edge
+            gg.fill(ax - 2, ay + ah + 1, ax + aw + 2, ay + ah + 2, col);
+            // left edge
+            gg.fill(ax - 2, ay - 1, ax - 1, ay + ah + 1, col);
+            // right edge
+            gg.fill(ax + aw + 1, ay - 1, ax + aw + 2, ay + ah + 1, col);
         }
-        super.render(gg, mx, my, pt);
+
 
         String rewarp = RewarpManager.getInstance().isRewarpSet() ? "Rewarp: Set" : "Rewarp: Not Set";
         int rewarpColor = RewarpManager.getInstance().isRewarpSet() ? 0xFF84F78A : 0xFFFF7A7A;

@@ -4,7 +4,7 @@ import net.minecraft.client.Minecraft;
 
 public class TeleportFailsafe {
     private static final Minecraft MC = Minecraft.getInstance();
-    private static final double TELEPORT_DISTANCE = 8.0;
+    private static final double TELEPORT_DISTANCE = 3.0;
 
     private double lastX = 0.0;
     private double lastY = 0.0;

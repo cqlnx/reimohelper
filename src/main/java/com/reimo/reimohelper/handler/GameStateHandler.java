@@ -2,9 +2,7 @@ package com.reimo.reimohelper.handler;
 
 import net.minecraft.client.Minecraft;
 
-/**
- * Tracks game state for macro execution
- */
+// stores player state used by macros
 public class GameStateHandler {
     private static GameStateHandler instance;
     private static final Minecraft MC = Minecraft.getInstance();
@@ -30,53 +28,39 @@ public class GameStateHandler {
         return instance;
     }
 
-    /**
-     * Check if player is not moving
-     */
+        // return true if no movement keys pressed
     public boolean notMoving() {
         if (MC.player == null) return true;
         return !MC.options.keyUp.isDown() && !MC.options.keyDown.isDown() && 
                !MC.options.keyLeft.isDown() && !MC.options.keyRight.isDown();
     }
 
-    /**
-     * Check if can change direction
-     */
+        // alias for notMoving()
     public boolean canChangeDirection() {
         return notMoving();
     }
 
-    /**
-     * Schedule rewarp
-     */
+        // placeholder, actual logic elsewhere
     public void scheduleRewarp() {
         // Implementation
     }
 
-    /**
-     * Schedule not moving state
-     */
+        // schedule a not-moving timer with default delay
     public void scheduleNotMoving() {
         scheduleNotMoving(100);
     }
 
-    /**
-     * Schedule not moving state with delay
-     */
+        // schedule not-moving with custom delay
     public void scheduleNotMoving(int delayMillis) {
         notMovingTimer.schedule(delayMillis);
     }
 
-    /**
-     * Check if can rewarp
-     */
+        // same as notMoving()
     public boolean canRewarp() {
         return notMoving();
     }
 
-    /**
-     * Simple clock for timing
-     */
+        // tiny helper for delayed actions
     public static class Clock {
         private long scheduledTime = 0;
 

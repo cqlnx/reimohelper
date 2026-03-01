@@ -7,9 +7,7 @@ import com.reimo.reimohelper.config.ReimoHelperConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Manages rewarp location and teleport commands
- */
+// holds the saved warp point and runs teleport commands
 public class RewarpManager {
     private static final Logger LOGGER = LoggerFactory.getLogger("ReimoHelper");
     private static RewarpManager instance;
@@ -34,9 +32,7 @@ public class RewarpManager {
         return instance;
     }
     
-    /**
-     * Set rewarp location
-     */
+        // store location and write to config
     public void setRewarpLocation(BlockPos pos) {
         this.rewarpLocation = pos;
         this.rewarpSet = true;
@@ -51,23 +47,17 @@ public class RewarpManager {
         LOGGER.info("Rewarp location set to: {}", pos);
     }
     
-    /**
-     * Get rewarp location
-     */
+        // returns saved position
     public BlockPos getRewarpLocation() {
         return rewarpLocation;
     }
     
-    /**
-     * Check if rewarp location is set
-     */
+        // true if warp has been set
     public boolean isRewarpSet() {
         return rewarpSet;
     }
     
-    /**
-     * Execute rewarp command
-     */
+        // send teleport command string to server
     public void executeRewarp(String command) {
         if (MC.player == null) {
             LOGGER.warn("Player is null, cannot execute rewarp command");
@@ -84,9 +74,7 @@ public class RewarpManager {
         }
     }
     
-    /**
-     * Execute rewarp with config command
-     */
+        // run configured command if auto enabled
     public void executeReward() {
         com.reimo.reimohelper.config.ReimoHelperConfig config = 
             com.reimo.reimohelper.config.ReimoHelperConfig.getInstance();
@@ -96,9 +84,7 @@ public class RewarpManager {
         }
     }
     
-    /**
-     * Teleport player to rewarp location (if set)
-     */
+        // immediate teleport to stored position
     public void teleportToRewarp() {
         if (!rewarpSet || rewarpLocation == null || MC.player == null) {
             LOGGER.warn("Cannot teleport: rewarp not set or player null");
