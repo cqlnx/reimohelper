@@ -12,6 +12,8 @@ import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,6 +25,7 @@ public class ReimoHelperScreen extends Screen {
         FAILSAFE
     }
 
+    private static final Logger LOGGER = LoggerFactory.getLogger("ReimoHelper");
     private final ReimoHelperConfig config = ReimoHelperConfig.getInstance();
     private MenuTab activeTab = MenuTab.GENERAL;
 
@@ -50,6 +53,7 @@ public class ReimoHelperScreen extends Screen {
     private Button webhookUrlButton;
     private String webhookUrlInput = "";
     private boolean editingWebhookUrl = false;
+    private Button pasteBtn;
     private Button tabGeneralButton;
     private Button tabHudButton;
     private Button tabFailsafeButton;
@@ -105,7 +109,7 @@ public class ReimoHelperScreen extends Screen {
         ).pos(cx - bw / 2, contentY + step).size(bw, BUTTON_H).build());
 
         ungrabButton = addGeneralButton(Button.builder(
-                Component.literal("Auto Ungrab: " + onOff(config.autoUngrabMouse)),
+                Component.literal("Auto Ungrab: " + onOff(config.autoUngrabMouse) + " [DEV]"),
                 b -> onToggleUngrab()
         ).pos(cx - bw / 2, contentY + step * 2).size(bw, BUTTON_H).build());
 
@@ -192,6 +196,30 @@ public class ReimoHelperScreen extends Screen {
                 Component.literal("Webhook URL: " + (config.discordWebhookUrl.isEmpty() ? "(empty)" : "***")),
                 b -> onEditWebhookUrl()
         ).pos(cx - bw / 2, contentY + step * 3 + 2).size(bw, BUTTON_H).build());
+
+        // create paste button (hidden by default) so it looks exactly like other buttons
+        int pasteW = 75;
+        int pasteH = 20;
+        int pasteX = width - pasteW - 20; // aligns with drawWebhookUrlInput
+        int pasteY = 12 + 32; // y2 + 32
+        pasteBtn = addRenderableWidget(Button.builder(
+                Component.literal("Paste"),
+                b -> {
+                    String clipboard = getClipboardAsString();
+                    LOGGER.info("Paste button action clipboard={}", clipboard);
+                    if (clipboard != null && !clipboard.isEmpty()) {
+                        webhookUrlInput = clipboard.trim();
+                        status = "Pasted webhook URL";
+                        statusColor = 0xFF9FE19F;
+                        webhookUrlButton.setMessage(Component.literal("Webhook URL: " + (webhookUrlInput.isEmpty() ? "(empty)" : "***")));
+                    } else {
+                        status = "Clipboard empty";
+                        statusColor = 0xFFFFAA66;
+                    }
+                }
+        ).pos(pasteX, pasteY).size(pasteW, pasteH).build());
+        pasteBtn.visible = false;
+        pasteBtn.active = false;
 
         closeButton = addRenderableWidget(Button.builder(
                 Component.literal("Close"),
@@ -354,20 +382,6 @@ public class ReimoHelperScreen extends Screen {
         config.save();
     }
 
-    private void onSetWebhookUrl() {
-        editingWebhookUrl = !editingWebhookUrl;
-        webhookUrlInput = config.discordWebhookUrl == null ? "" : config.discordWebhookUrl;
-        if (editingWebhookUrl) {
-            status = "Editing webhook URL... (Paste with Ctrl+V, Enter to confirm)";
-            statusColor = 0xFFB7C6D8;
-        } else {
-            config.discordWebhookUrl = webhookUrlInput;
-            status = "Webhook URL saved";
-            statusColor = 0xFF9FE19F;
-            config.save();
-        }
-        webhookUrlButton.setMessage(Component.literal("Webhook URL: " + (webhookUrlInput.isEmpty() ? "(empty)" : "***")));
-    }
 
     private String onOff(boolean value) {
         return value ? "ON" : "OFF";
@@ -376,18 +390,139 @@ public class ReimoHelperScreen extends Screen {
     private void onEditWebhookUrl() {
         editingWebhookUrl = !editingWebhookUrl;
         if (editingWebhookUrl) {
-            status = "Webhook URL input mode - Press Ctrl+C then paste in config file, or edit config/reimohelper/config.json";
+            webhookUrlInput = config.discordWebhookUrl == null ? "" : config.discordWebhookUrl;
+            status = "Webhook URL: Paste with Ctrl+V, Enter to save, Esc to cancel";
             statusColor = 0xFFB7C6D8;
+            if (pasteBtn != null) {
+                pasteBtn.visible = true;
+                pasteBtn.active = true;
+            }
         } else {
-            status = "Webhook URL mode closed";
-            statusColor = 0xFF9FE19F;
+            status = "Webhook URL closed without saving";
+            statusColor = 0xFFFFAA66;
+            webhookUrlButton.setMessage(Component.literal("Webhook URL: " + (config.discordWebhookUrl.isEmpty() ? "(empty)" : "***")));
+            if (pasteBtn != null) {
+                pasteBtn.visible = false;
+                pasteBtn.active = false;
+            }
         }
     }
 
     @Override
+    public boolean keyPressed(net.minecraft.client.input.KeyEvent event) {
+        if (editingWebhookUrl) {
+            LOGGER.info("WebhookScreen keyPressed event={}", event);
+            int key = event.key();
+            int scancode = event.scancode();
+            int mods = event.modifiers();
+            if (key == 256) { // ESC key
+                editingWebhookUrl = false;
+                status = "Webhook URL closed without saving";
+                statusColor = 0xFFFFAA66;
+                return true;
+            }
+            if (key == 257 || key == 335) { // ENTER or KP_ENTER
+                config.discordWebhookUrl = webhookUrlInput;
+                editingWebhookUrl = false;
+                status = "Webhook URL saved!";
+                statusColor = 0xFF9FE19F;
+                config.save();
+                webhookUrlButton.setMessage(Component.literal("Webhook URL: " + (webhookUrlInput.isEmpty() ? "(empty)" : "***")));
+                return true;
+            }
+            if (key == 259) { // BACKSPACE
+                if (!webhookUrlInput.isEmpty()) {
+                    webhookUrlInput = webhookUrlInput.substring(0, webhookUrlInput.length() - 1);
+                }
+                return true;
+            }
+            if (key == 86 && (mods & 2) != 0) { // Ctrl+V - paste
+                String clipboard = getClipboardAsString();
+                if (clipboard != null && !clipboard.isEmpty()) {
+                    webhookUrlInput = clipboard.trim();
+                }
+                return true;
+            }
+        }
+        return super.keyPressed(event);
+    }
+
+    @Override
+    public boolean charTyped(net.minecraft.client.input.CharacterEvent event) {
+        if (editingWebhookUrl) {
+            LOGGER.info("WebhookScreen charTyped event={}", event);
+            int codePoint = event.codepoint();
+            if (codePoint >= 32 && codePoint <= 126 && webhookUrlInput.length() < 200) {
+                webhookUrlInput += (char) codePoint;
+                return true;
+            }
+            // consume any other character so it doesn't leak
+            return true;
+        }
+        return super.charTyped(event);
+    }
+
+    private String getClipboardAsString() {
+        // Try AWT clipboard first
+        try {
+            java.awt.Toolkit toolkit = java.awt.Toolkit.getDefaultToolkit();
+            java.awt.datatransfer.Clipboard clipboard = toolkit.getSystemClipboard();
+            java.awt.datatransfer.DataFlavor flavor = java.awt.datatransfer.DataFlavor.stringFlavor;
+            if (clipboard.isDataFlavorAvailable(flavor)) {
+                Object data = clipboard.getData(flavor);
+                if (data instanceof String) {
+                    LOGGER.info("Clipboard read via AWT");
+                    return (String) data;
+                }
+            }
+        } catch (Exception ignored) {
+            LOGGER.info("AWT clipboard read failed: {}", ignored.toString());
+        }
+
+        // On Linux, try wl-paste or xclip as a fallback (Wayland/X11)
+        try {
+            String os = System.getProperty("os.name").toLowerCase();
+            if (os.contains("linux")) {
+                String out = tryCommand(new String[]{"wl-paste", "-n"});
+                if (out != null && !out.isEmpty()) return out;
+                out = tryCommand(new String[]{"xclip", "-o", "-selection", "clipboard"});
+                if (out != null && !out.isEmpty()) return out;
+            }
+        } catch (Exception ignored) {
+        }
+
+        return null;
+    }
+
+    private String tryCommand(String[] cmd) {
+        try {
+            ProcessBuilder pb = new ProcessBuilder(cmd);
+            pb.redirectErrorStream(true);
+            Process p = pb.start();
+            try (java.io.InputStream is = p.getInputStream(); java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(is))) {
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = r.readLine()) != null) {
+                    sb.append(line).append('\n');
+                    if (sb.length() > 8192) break;
+                }
+                String out = sb.toString().trim();
+                p.destroy();
+                if (out != null && !out.isEmpty()) {
+                    LOGGER.info("Clipboard read via fallback: {}", cmd[0]);
+                    return out;
+                }
+                return null;
+            }
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         double mouseX = event.x();
         double mouseY = event.y();
+        // Let button widgets handle clicks (paste button is an actual Button)
         if (hudEditMode && event.button() == 0) {
             if (insideInventory(mouseX, mouseY)) {
                 dragTarget = DragTarget.INVENTORY;
@@ -518,6 +653,10 @@ public class ReimoHelperScreen extends Screen {
             drawHudEditor(gg);
         }
 
+        if (editingWebhookUrl) {
+            drawWebhookUrlInput(gg, cx, 0);
+        }
+
         super.render(gg, mx, my, pt);
 
         String rewarp = RewarpManager.getInstance().isRewarpSet() ? "Rewarp: Set" : "Rewarp: Not Set";
@@ -550,6 +689,67 @@ public class ReimoHelperScreen extends Screen {
         gg.fill(stX, stY + stH - 2, stX + stW, stY + stH, 0xFF5CA8FF);
         gg.fill(stX + stW - 6, stY + stH - 6, stX + stW - 2, stY + stH - 2, 0xFFFFFFFF);
         gg.drawString(font, "Status HUD", stX + 4, stY - 10, 0xFFD6E8FF, false);
+    }
+
+    private double pasteX, pasteY, pasteW, pasteH;
+    private int lastPasteRenderX, lastPasteRenderY, lastPasteRenderW, lastPasteRenderH;
+
+    private void drawWebhookUrlInput(GuiGraphics gg, int cx, int y) {
+        int w = 300;
+        int h = 100;
+        int x = width - w - 12; // Top-right corner
+        int y2 = 12; // Position near top
+
+        // Dark background overlay
+        gg.fill(x - 3, y2 - 3, x + w + 3, y2 + h + 3, 0xDD000000);
+        gg.fill(x, y2, x + w, y2 + h, 0xD8121821);
+        gg.fill(x, y2, x + w, y2 + 2, 0xFF2EC4B6);
+        gg.fill(x, y2 + h - 2, x + w, y2 + h, 0xFF2EC4B6);
+
+        gg.drawString(font, "Discord Webhook URL", x + 10, y2 + 10, 0xFFFFFFFF, false);
+        
+        // Draw text input box
+        int boxY = y2 + 32;
+        int boxH = 22;
+        int inputW = w - 90;  // Leave room for paste button
+        gg.fill(x + 8, boxY, x + 8 + inputW, boxY + boxH, 0xFF1A2A38);
+        gg.fill(x + 8, boxY, x + 8 + inputW, boxY + 1, 0xFF5CA8FF);
+        gg.fill(x + 8, boxY + boxH - 1, x + 8 + inputW, boxY + boxH, 0xFF5CA8FF);
+        
+        // Display the URL or placeholder
+        String displayUrl = webhookUrlInput.isEmpty() ? "paste your webhook URL here" : webhookUrlInput;
+        String truncatedUrl;
+        if (displayUrl.length() > 35) {
+            truncatedUrl = displayUrl.substring(0, 32) + "...";
+        } else {
+            truncatedUrl = displayUrl;
+        }
+        int textColor = webhookUrlInput.isEmpty() ? 0xFF888888 : 0xFFFFFFFF;
+        gg.drawString(font, truncatedUrl, x + 12, boxY + 7, textColor, false);
+        
+        // Draw blinking cursor if editing
+        if ((System.currentTimeMillis() / 500) % 2 == 0) {
+            int cursorX = x + 12 + font.width(truncatedUrl);
+            if (cursorX < x + 8 + inputW - 12) {
+                gg.fill(cursorX, boxY + 5, cursorX + 1, boxY + boxH - 5, 0xFFFFFFFF);
+            }
+        }
+
+        // paste button area - right side of text input
+        pasteW = 75;
+        pasteH = 20;
+        pasteX = x + w - pasteW - 8;
+        pasteY = boxY;
+        // Store for reliable click detection
+        lastPasteRenderX = (int)pasteX;
+        lastPasteRenderY = (int)pasteY;
+        lastPasteRenderW = (int)pasteW;
+        lastPasteRenderH = (int)pasteH;
+        gg.fill((int)pasteX - 1, (int)pasteY - 1, (int)pasteX + (int)pasteW + 1, (int)pasteY + (int)pasteH + 1, 0xFF2EC4B6);
+        gg.fill((int)pasteX, (int)pasteY, (int)pasteX + (int)pasteW, (int)pasteY + (int)pasteH, 0xFF3A3A3A);
+        gg.drawCenteredString(font, "Paste", (int)(pasteX + pasteW / 2), (int)(pasteY + 5), 0xFFFFFFFF);
+
+        gg.drawString(font, "Enter: save | Esc: cancel | Click Paste or Ctrl+V | Backspace", x + 8, y2 + 62, 0xFFB7C6D8, false);
     }
 
     @Override

@@ -33,6 +33,8 @@ public class LayerDropFarmMacro extends AbstractMacro {
     private double lastX = 0.0;
     private double lastY = 0.0;
     private double lastZ = 0.0;
+    // When set, automatic direction switches are suppressed until this timestamp
+    private long suppressSwitchUntilMs = 0L;
 
     public LayerDropFarmMacro() {
         super();
@@ -198,10 +200,19 @@ public class LayerDropFarmMacro extends AbstractMacro {
     }
 
     private void switchDirection(long now, String reason) {
+        if (now < suppressSwitchUntilMs) {
+            LOGGER.info("Direction switch suppressed until {} ms (now={}), reason: {}", suppressSwitchUntilMs, now, reason);
+            return;
+        }
         movingLeft = !movingLeft;
         directionSwitchCooldownUntil = now + DIRECTION_SWITCH_COOLDOWN_MS
                 + ThreadLocalRandom.current().nextInt(40, 120);
         LOGGER.info("{} -> switching direction to {}", reason, movingLeft ? "LEFT" : "RIGHT");
+    }
+
+    public void preventAutoSwitchFor(long durationMs) {
+        suppressSwitchUntilMs = System.currentTimeMillis() + Math.max(0L, durationMs);
+        LOGGER.info("Auto direction switching suppressed for {} ms (until {})", durationMs, suppressSwitchUntilMs);
     }
 
     private void applyBreakAction() {

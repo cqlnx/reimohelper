@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.reimo.reimohelper.config.ReimoHelperConfig;
 import com.reimo.reimohelper.feature.BpsTracker;
+import com.reimo.reimohelper.handler.MacroHandler;
 import com.reimo.reimohelper.hud.StatusHud;
 import net.minecraft.client.Minecraft;
 import org.slf4j.Logger;
@@ -105,6 +106,11 @@ public final class DiscordWebhookService {
         ReimoHelperConfig cfg = ReimoHelperConfig.getInstance();
         if (!cfg.discordWebhookEnabled) {
             nextSendAtMs = 0L;
+            return;
+        }
+
+        // Only send status updates if macro is running
+        if (!MacroHandler.getInstance().isMacroActive()) {
             return;
         }
 

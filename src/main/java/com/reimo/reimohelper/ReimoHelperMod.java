@@ -52,6 +52,8 @@ public final class ReimoHelperMod {
             CustomizeGuiOverlayEvent.Chat.BUS.addListener(StatusHud::onRender);
             CustomizeGuiOverlayEvent.Chat.BUS.addListener(RewarpHighlightHud::onRender);
             SystemMessageReceivedEvent.BUS.addListener(ChatEventHandler::onSystemMessage);
+            // also register for vanilla chat events so command-block and generic server messages are caught
+            net.minecraftforge.client.event.ClientChatReceivedEvent.BUS.addListener(ChatEventHandler::onChat);
 
             LOGGER.info("HELLO FROM CLIENT SETUP");
             LOGGER.info("MINECRAFT NAME >> {}", Minecraft.getInstance().getUser().getName());

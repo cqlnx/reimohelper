@@ -3,6 +3,7 @@ package com.reimo.reimohelper.event;
 import com.reimo.reimohelper.failsafe.FailsafeManager;
 import com.reimo.reimohelper.failsafe.impl.EvacuateFailsafe;
 import com.reimo.reimohelper.feature.BlockSoundController;
+import com.reimo.reimohelper.feature.BpsTracker;
 import com.reimo.reimohelper.feature.DiscordWebhookService;
 import com.reimo.reimohelper.feature.RewarpHighlightService;
 import com.reimo.reimohelper.feature.UngrabMouse;
@@ -23,6 +24,7 @@ public class ClientTickHandler {
             RewarpHighlightService.onClientTick();
             UngrabMouse.getInstance().onClientTick();
             BlockSoundController.onClientTick();
+            BpsTracker.onClientTick();
             DiscordWebhookService.onClientTick();
         } catch (Exception e) {
             LOGGER.error("Error in client tick", e);

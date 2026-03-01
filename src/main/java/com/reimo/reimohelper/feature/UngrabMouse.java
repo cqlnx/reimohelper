@@ -8,7 +8,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
 /**
- * Keeps cursor ungrabbed while macro runs (optional).
+ * This will need alot of updates it straight dog shit and doesnt do what it should.
  */
 public final class UngrabMouse {
     private static final Minecraft MC = Minecraft.getInstance();

@@ -20,6 +20,7 @@ public class EvacuateFailsafe {
     private String activeReason = "";
     private long lastSoundMs = 0L;
     private static final long ALARM_INTERVAL_MS = 900L;
+    private boolean isEvacuateAlert = false;
 
     private EvacuateState state = EvacuateState.NONE;
     private long nextActionAtMs = 0L;
@@ -40,12 +41,36 @@ public class EvacuateFailsafe {
         return activeReason;
     }
 
+    public boolean isEvacuateAlert() {
+        return isEvacuateAlert;
+    }
+
     public void onChatDetection(String rawMessage) {
         if (rawMessage == null) return;
         String msg = rawMessage.toLowerCase(Locale.ROOT);
-        if (msg.contains("server is about to") || msg.contains("server reboot") || msg.contains("can't use this when the server is about to")) {
+
+        if (msg.contains("[reimohelper]")) {
+            return;
+        }
+
+        if (state != EvacuateState.NONE) {
+            return;
+        }
+
+        LOGGER.info("Chat detection received: {}", msg);
+
+        boolean isRebootMsg = msg.contains("reboot") || msg.contains("restart") || 
+                              msg.contains("server is about to") || msg.contains("can't use this when the server is about to");
+
+        if (isRebootMsg) {
+            LOGGER.warn("Server reboot detected! Message: {}", msg);
             if (MacroHandler.getInstance().isMacroActive() && ReimoHelperConfig.getInstance().autoEvacuateOnServerReboot) {
+                LOGGER.warn("Evacuating due to server reboot");
                 startEvacuation("EVACUATE: server reboot warning");
+            } else {
+                LOGGER.info("Reboot message detected but conditions not met. Macro active: {}, Auto evacuate enabled: {}", 
+                    MacroHandler.getInstance().isMacroActive(), 
+                    ReimoHelperConfig.getInstance().autoEvacuateOnServerReboot);
             }
         }
     }
@@ -53,6 +78,7 @@ public class EvacuateFailsafe {
     public void alertOnly(String reason) {
         if (MC.player == null) return;
         alertActive = true;
+        isEvacuateAlert = false;
         activeReason = reason;
         MC.player.displayClientMessage(
                 Component.literal("[ReimoHelper] Failsafe: " + reason + " | Press K to stop alarm")
@@ -63,10 +89,21 @@ public class EvacuateFailsafe {
         LOGGER.warn("Failsafe alert active: {}", reason);
     }
 
+    public void evacuateAlert(String reason) {
+        if (MC.player == null) return;
+        alertActive = true;
+        isEvacuateAlert = true;
+        activeReason = reason;
+        playEvacuateDingOnce();
+        LOGGER.warn("Evacuate failsafe triggered: {}", reason);
+    }
+
     public void onClientTick() {
-        if (alertActive && MC.player != null && System.currentTimeMillis() - lastSoundMs >= ALARM_INTERVAL_MS) {
+        // For non-evacuate alerts: loop the anvil sound
+        if (alertActive && !isEvacuateAlert && MC.player != null && System.currentTimeMillis() - lastSoundMs >= ALARM_INTERVAL_MS) {
             playAlarmNow();
         }
+        // Run evacuation state
         runEvacuationState();
     }
 
@@ -84,7 +121,7 @@ public class EvacuateFailsafe {
 
     private void startEvacuation(String reason) {
         if (state != EvacuateState.NONE) return;
-        alertOnly(reason);
+        evacuateAlert(reason);
         resumeMacroAfter = MacroHandler.getInstance().isMacroActive();
         MacroHandler.getInstance().disableMacro();
         state = EvacuateState.EVACUATE_FROM_ISLAND;
@@ -139,6 +176,14 @@ public class EvacuateFailsafe {
         float scaled = Math.max(1.0F, 1.0F / Math.max(0.1F, master));
         MC.player.playSound(SoundEvents.ANVIL_LAND, scaled, 0.9F);
         lastSoundMs = System.currentTimeMillis();
+    }
+
+    private void playEvacuateDingOnce() {
+        if (MC.player == null) return;
+        float master = (float) MC.options.getSoundSourceVolume(net.minecraft.sounds.SoundSource.MASTER);
+        float scaled = Math.max(1.0F, 1.0F / Math.max(0.1F, master));
+        MC.player.playSound(SoundEvents.ANVIL_LAND, scaled, 1.3F);
+        LOGGER.info("Evacuate ding sound played (once)");
     }
 
     enum EvacuateState {

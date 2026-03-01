@@ -12,6 +12,7 @@ public class FailsafeAlertHud {
         if (MC.player == null) return;
         EvacuateFailsafe fs = EvacuateFailsafe.getInstance();
         if (!fs.isAlertActive()) return;
+        if (fs.isEvacuateAlert()) return;  // Don't show HUD for evacuate alerts
 
         GuiGraphics gg = event.getGuiGraphics();
         int cx = MC.getWindow().getGuiScaledWidth() / 2;

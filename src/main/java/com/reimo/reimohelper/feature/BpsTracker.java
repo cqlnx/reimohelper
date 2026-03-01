@@ -8,16 +8,16 @@ import net.minecraft.world.phys.HitResult;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
- * Tracks approximate block breaks-per-second (BPS) from the active block target.
+ * Tracks block breaks-per-second (BPS) by monitoring all blocks in vicinity.
  */
 public final class BpsTracker {
     private static final Minecraft MC = Minecraft.getInstance();
     private static final Deque<Long> BREAK_TIMESTAMPS = new ArrayDeque<>();
-
-    private static BlockPos trackedPos = null;
-    private static boolean trackedWasSolid = false;
+    private static final Map<BlockPos, Boolean> previousBlockStates = new HashMap<>();
 
     private BpsTracker() {
     }
@@ -27,31 +27,35 @@ public final class BpsTracker {
         cleanup(now);
 
         if (MC.player == null || MC.level == null || !MacroHandler.getInstance().isMacroActive()) {
-            trackedPos = null;
-            trackedWasSolid = false;
+            previousBlockStates.clear();
             return;
         }
 
         HitResult hit = MC.hitResult;
         if (!(hit instanceof BlockHitResult bhr)) {
-            trackedPos = null;
-            trackedWasSolid = false;
+            previousBlockStates.clear();
             return;
         }
 
-        BlockPos currentPos = bhr.getBlockPos();
-        boolean currentSolid = !MC.level.isEmptyBlock(currentPos);
-
-        if (trackedPos != null && trackedPos.equals(currentPos)) {
-            if (trackedWasSolid && !currentSolid) {
-                BREAK_TIMESTAMPS.addLast(now);
+        BlockPos hitPos = bhr.getBlockPos();
+        
+        // Check a 5x5x5 cube around the hit position for block changes
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dy = -2; dy <= 2; dy++) {
+                for (int dz = -2; dz <= 2; dz++) {
+                    BlockPos checkPos = hitPos.offset(dx, dy, dz);
+                    boolean currentSolid = !MC.level.isEmptyBlock(checkPos);
+                    
+                    Boolean prevState = previousBlockStates.get(checkPos);
+                    if (prevState != null && prevState && !currentSolid) {
+                        // Block was solid, now broken
+                        BREAK_TIMESTAMPS.addLast(now);
+                    }
+                    
+                    previousBlockStates.put(checkPos, currentSolid);
+                }
             }
-            trackedWasSolid = currentSolid;
-            return;
         }
-
-        trackedPos = currentPos;
-        trackedWasSolid = currentSolid;
     }
 
     public static double getBps() {

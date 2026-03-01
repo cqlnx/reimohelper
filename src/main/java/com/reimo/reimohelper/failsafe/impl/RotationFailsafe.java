@@ -4,7 +4,7 @@ import net.minecraft.client.Minecraft;
 
 public class RotationFailsafe {
     private static final Minecraft MC = Minecraft.getInstance();
-    private static final float ROT_DELTA = 85f;
+    private static final float ROT_DELTA = 5f;
 
     private float lastYaw = 0f;
     private float lastPitch = 0f;

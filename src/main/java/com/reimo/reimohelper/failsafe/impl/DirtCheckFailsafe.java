@@ -31,21 +31,34 @@ public class DirtCheckFailsafe {
                 .orElse(AbstractMacro.State.NONE);
 
         boolean sideMoveState = state == AbstractMacro.State.LEFT || state == AbstractMacro.State.RIGHT;
-        boolean tryingToMove = MC.options.keyUp.isDown() && (MC.options.keyLeft.isDown() || MC.options.keyRight.isDown());
+        // Determine intended side based on macro state
+        Direction intendedSide = state == AbstractMacro.State.LEFT ? MC.player.getDirection().getCounterClockWise() : MC.player.getDirection().getClockWise();
+        boolean tryingToMove = MC.options.keyUp.isDown() && ((state == AbstractMacro.State.LEFT && MC.options.keyLeft.isDown()) || (state == AbstractMacro.State.RIGHT && MC.options.keyRight.isDown()));
         double dx = MC.player.getX() - lastX;
         double dz = MC.player.getZ() - lastZ;
         double horizontalMove = Math.hypot(dx, dz);
         boolean sameLayer = Math.abs(MC.player.getY() - lastY) < 0.12;
         boolean sideBlocked = isAnySideBlocked();
+        boolean intendedSideBlocked = wouldCollideWhenMovingSide(intendedSide);
         boolean notDropping = state != AbstractMacro.State.DROPPING;
 
         long now = System.currentTimeMillis();
-        if (sideMoveState && notDropping && tryingToMove && sameLayer && MC.player.onGround() && (horizontalMove < LOW_MOVE_THRESHOLD || sideBlocked)) {
-            if (blockedSinceMs == 0L) blockedSinceMs = now;
-            if (now - blockedSinceMs >= BLOCKED_TIMEOUT_MS) {
-                blockedSinceMs = 0L;
+        if (sideMoveState && notDropping && tryingToMove && sameLayer && MC.player.onGround()) {
+            // If the intended side is physically blocked, trigger immediately
+            if (intendedSideBlocked) {
                 updateLast();
-                return "DIRT_CHECK: blocked on same layer" + (sideBlocked ? " (side blocked)" : " (low movement)");
+                return "DIRT_CHECK: blocked on same layer (side blocked)";
+            }
+            // Otherwise, wait for low-movement timeout
+            if (horizontalMove < LOW_MOVE_THRESHOLD || sideBlocked) {
+                if (blockedSinceMs == 0L) blockedSinceMs = now;
+                if (now - blockedSinceMs >= BLOCKED_TIMEOUT_MS) {
+                    blockedSinceMs = 0L;
+                    updateLast();
+                    return "DIRT_CHECK: blocked on same layer" + (sideBlocked ? " (side blocked)" : " (low movement)");
+                }
+            } else {
+                blockedSinceMs = 0L;
             }
         } else {
             blockedSinceMs = 0L;
