@@ -5,6 +5,8 @@ import com.reimo.reimohelper.handler.MacroHandler;
 import com.reimo.reimohelper.macro.AbstractMacro;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import net.minecraft.network.chat.Component;
 
 /**
@@ -12,6 +14,7 @@ import net.minecraft.network.chat.Component;
  */
 public final class UngrabMouse {
     private static final Minecraft MC = Minecraft.getInstance();
+    private static final Logger LOGGER = LoggerFactory.getLogger("ReimoHelper");
     private static UngrabMouse instance;
     private static final long NON_ATTACK_UNGRAB_DELAY_MS = 450L;
 
@@ -59,6 +62,18 @@ public final class UngrabMouse {
         nonAttackSinceMs = 0L;
         announcedAltTabSafe = false;
         regrab();
+    }
+
+    /**
+     * Set the look lock to the player's current yaw/pitch so the macro will keep
+     * the camera at the position it was at when this method was called.
+     */
+    public void lockToCurrentRotation() {
+        if (MC.player == null) return;
+        lockedYaw = MC.player.getYRot();
+        lockedPitch = MC.player.getXRot();
+        lookLocked = true;
+        LOGGER.info("Locked look to current rotation: yaw={}, pitch={}", lockedYaw, lockedPitch);
     }
 
     public void onClientTick() {
