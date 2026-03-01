@@ -195,6 +195,7 @@ public class ReimoHelperScreen extends Screen {
     private String status = "Ready";
     private int statusColor = COLOR_TEXT_SECONDARY;
     private long keyCaptureStartedAt;
+    private boolean macroTypeDropdownOpen;
     private int macroLabelX;
     private int macroLabelYMacroKey;
     private int macroLabelYMacroType;
@@ -361,6 +362,7 @@ public class ReimoHelperScreen extends Screen {
         computeLayout();
         buildWidgets();
 
+        macroTypeDropdownOpen = false;
         setUiMode(UiMode.NORMAL);
         applyTabVisibility();
         updateTabLabels();
@@ -725,6 +727,7 @@ public class ReimoHelperScreen extends Screen {
         if (activeTab == tab) {
             return;
         }
+        macroTypeDropdownOpen = false;
         if (uiMode != UiMode.NORMAL) {
             setUiMode(UiMode.NORMAL);
         }
@@ -744,6 +747,9 @@ public class ReimoHelperScreen extends Screen {
         }
 
         uiMode = newMode;
+        if (uiMode != UiMode.NORMAL) {
+            macroTypeDropdownOpen = false;
+        }
 
         if (uiMode == UiMode.NORMAL) {
             if (hudEditButton != null) {
@@ -766,8 +772,7 @@ public class ReimoHelperScreen extends Screen {
     private void syncModalWidgetVisibility() {
         boolean webhookEdit = uiMode == UiMode.WEBHOOK_EDIT;
         boolean colorEdit = uiMode == UiMode.COLOR_EDIT;
-        boolean macroTypePick = uiMode == UiMode.MACRO_TYPE_PICK;
-        boolean modalOpen = webhookEdit || colorEdit || macroTypePick || uiMode == UiMode.KEY_CAPTURE;
+        boolean modalOpen = webhookEdit || colorEdit || uiMode == UiMode.KEY_CAPTURE;
 
         if (webhookSaveBtn != null) {
             webhookSaveBtn.visible = webhookEdit;
@@ -819,15 +824,15 @@ public class ReimoHelperScreen extends Screen {
         }
 
         for (AbstractWidget button : macroTypeButtons) {
-            button.visible = macroTypePick;
-            button.active = macroTypePick;
+            button.visible = false;
+            button.active = false;
         }
     }
 
     private void applyTabVisibility() {
         boolean normal = uiMode == UiMode.NORMAL;
         boolean hudEdit = uiMode == UiMode.HUD_EDIT;
-        boolean macroTypePick = uiMode == UiMode.MACRO_TYPE_PICK;
+        boolean macroTypePick = normal && activeTab == MenuTab.MACRO && macroTypeDropdownOpen;
 
         boolean general = normal && activeTab == MenuTab.GENERAL;
         boolean macro = normal && activeTab == MenuTab.MACRO;
@@ -868,7 +873,7 @@ public class ReimoHelperScreen extends Screen {
         if (tabFailsafeButton != null) tabFailsafeButton.active = navigationActive;
         if (tabDiscordButton != null) tabDiscordButton.active = navigationActive;
 
-        if (uiMode == UiMode.WEBHOOK_EDIT || uiMode == UiMode.COLOR_EDIT || uiMode == UiMode.KEY_CAPTURE || uiMode == UiMode.MACRO_TYPE_PICK) {
+        if (uiMode == UiMode.WEBHOOK_EDIT || uiMode == UiMode.COLOR_EDIT || uiMode == UiMode.KEY_CAPTURE) {
             setButtonsVisible(generalButtons, false);
             setButtonsVisible(macroButtons, false);
             setButtonsVisible(rewarpButtons, false);
@@ -911,7 +916,11 @@ public class ReimoHelperScreen extends Screen {
     }
 
     private void onMacroTypeButton() {
-        setUiMode(UiMode.MACRO_TYPE_PICK);
+        macroTypeDropdownOpen = !macroTypeDropdownOpen;
+        applyTabVisibility();
+        if (macroTypeDropdownOpen) {
+            updateStatus("Pick a macro type", config.uiTextSecondaryColor);
+        }
     }
 
     private void onPickMacroType(ReimoHelperConfig.MacroType type) {
@@ -920,7 +929,8 @@ public class ReimoHelperScreen extends Screen {
             macroTypeButton.setMessage(Component.literal("Macro type: " + config.macroType.getDisplayName()));
         }
         config.save();
-        setUiMode(UiMode.NORMAL);
+        macroTypeDropdownOpen = false;
+        applyTabVisibility();
         updateStatus("Macro type set to " + type.getDisplayName(), config.uiTextPrimaryColor);
     }
 
@@ -1127,6 +1137,13 @@ public class ReimoHelperScreen extends Screen {
             return true;
         }
 
+        if (uiMode == UiMode.NORMAL && macroTypeDropdownOpen && key == 256) {
+            macroTypeDropdownOpen = false;
+            applyTabVisibility();
+            updateStatus("Macro type selection cancelled", config.uiTextSecondaryColor);
+            return true;
+        }
+
         return super.keyPressed(event);
     }
 
@@ -1156,6 +1173,15 @@ public class ReimoHelperScreen extends Screen {
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         double mouseX = event.x();
         double mouseY = event.y();
+
+        if (uiMode == UiMode.NORMAL && activeTab == MenuTab.MACRO && macroTypeDropdownOpen && event.button() == 0) {
+            boolean clickedTrigger = macroTypeButton != null && macroTypeButton.isMouseOver(mouseX, mouseY);
+            boolean clickedOption = isInsideMacroTypeDropdown(mouseX, mouseY);
+            if (!clickedTrigger && !clickedOption) {
+                macroTypeDropdownOpen = false;
+                applyTabVisibility();
+            }
+        }
 
         if (uiMode == UiMode.HUD_EDIT && event.button() == 0) {
             if (insideInventory(mouseX, mouseY)) {
@@ -1629,6 +1655,15 @@ public class ReimoHelperScreen extends Screen {
         int w = StatusHud.getHudWidth(config);
         int h = StatusHud.getHudHeight(config, debugLineCount());
         return mx >= x && my >= y && mx <= x + w && my <= y + h;
+    }
+
+    private boolean isInsideMacroTypeDropdown(double mx, double my) {
+        for (AbstractWidget widget : macroTypeButtons) {
+            if (widget.visible && widget.isMouseOver(mx, my)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private int debugLineCount() {
